@@ -65,6 +65,12 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
+      - name: Snyk monitor (register project for continuous monitoring)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        run: npx -y snyk@latest monitor --all-projects
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
       - name: Snyk code (SAST)
         run: npx -y snyk@latest code test --all-projects --severity-threshold=high
         env:
