@@ -47,7 +47,7 @@ jobs:
         run: pnpm exec ng build --configuration=development
 
       - name: Unit + integration tests + coverage
-        run: pnpm exec ng test --watch=false --code-coverage
+        run: pnpm exec ng test --watch=false --coverage
 
       - name: Upload coverage to SonarCloud
         if: always()
