@@ -1,0 +1,10 @@
+# Snyk (https://snyk.io) policy file
+# Controls Snyk's behavior when scanning this project.
+# Version of the Snyk policy file format
+version: v1.25.0
+# ignores vulnerabilities until expiry date; change duration by modifying expiryDate
+# ignore:
+#   SNYK-JS-[ID]:
+#     - '*':
+#         reason: 'No upgrade available'
+#         expires: '2030-01-01T00:00:00.000Z'

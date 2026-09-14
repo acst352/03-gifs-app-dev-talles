@@ -1,0 +1,146 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  quality-gates:
+    name: Quality Gates (Build + Tests + Snyk + SonarCloud)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    env:
+      VITE_GIPHY_API_KEY: ci-placeholder-not-used-at-runtime
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.22.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build (smoke test)
+        run: pnpm exec ng build --configuration=development
+
+      - name: Unit + integration tests + coverage
+        run: pnpm exec ng test --watch=false --code-coverage
+
+      - name: Upload coverage to SonarCloud
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+          retention-days: 5
+
+      - name: Snyk test (dependency vulnerabilities)
+        run: pnpm exec snyk test --severity-threshold=high
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Snyk code (SAST)
+        run: pnpm exec snyk code test --severity-threshold=high
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: SonarCloud Scan
+        uses: sonarsource/sonarqube-scan-action@v3
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+
+      - name: SonarCloud Quality Gate
+        uses: sonarsource/sonarqube-quality-gate-action@v1
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  deploy-vercel:
+    name: Deploy to Vercel
+    needs: quality-gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.22.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Pull Vercel project configuration
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            vercel pull --yes --environment=preview
+          else
+            vercel pull --yes --environment=production
+          fi
+
+      - name: Build app for Vercel
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            vercel build --target=preview
+          else
+            vercel build --target=production
+          fi
+        env:
+          VITE_GIPHY_API_KEY: ${{ secrets.VITE_GIPHY_API_KEY }}
+
+      - name: Deploy preview (PR)
+        if: github.event_name == 'pull_request'
+        id: deploy-preview
+        run: vercel deploy --prebuilt --target=preview --yes > preview-url.txt
+      - name: Comment preview URL on PR
+        if: github.event_name == 'pull_request' && steps.deploy-preview.outputs.id || steps.deploy-preview.conclusion == 'success'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: vercel-preview
+          message: |
+            :rocket: Preview deployed
+
+            $(cat preview-url.txt)
+
+      - name: Deploy production (master)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        run: vercel deploy --prebuilt --target=production --yes

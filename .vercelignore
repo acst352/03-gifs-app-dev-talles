@@ -1,0 +1,16 @@
+.angular/
+.angular/cache
+.git/
+.github/
+coverage/
+node_modules/
+**/*.spec.ts
+**/node_modules/**
+**/.angular/**
+src/**/*.spec.ts
+.env
+.env.local
+.env.*.local
+.snyk
+sonar-project.properties
+README.md
