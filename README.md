@@ -112,9 +112,9 @@ Configure at https://github.com/acst352/03-gifs-app-dev-talles/settings/secrets/
 | `VERCEL_PROJECT_ID` | local: `vercel link` → `.vercel/project.json` → `projectId` |
 | `VITE_GIPHY_API_KEY` | https://developers.giphy.com → API Key (rotated; never in repo) |
 
-## Required Vercel env vars
+## Vercel deploys
 
-Set `VITE_GIPHY_API_KEY` in Vercel project settings (Settings → Environment Variables). It's used at build time by `scripts/inject-prod-env.cjs`.
+Deploys are driven entirely by the `deploy-vercel` job above — it runs `vercel build` with `VITE_GIPHY_API_KEY` from the GitHub secret, then `vercel deploy --prebuilt`. Vercel's own Git integration auto-deploy is disabled (`vercel.json` → `git.deploymentEnabled: false`) so pushes don't also trigger a second, independent build on Vercel's infrastructure — that build has no env vars configured and would always fail with `Missing VITE_GIPHY_API_KEY environment variable`.
 
 ## Linear integration
 
