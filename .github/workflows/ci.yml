@@ -43,6 +43,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
       - name: Build (smoke test)
         run: pnpm exec ng build --configuration=development
 
@@ -102,6 +105,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
 
       - name: Pull Vercel project configuration
         run: |
