@@ -58,12 +58,12 @@ jobs:
           retention-days: 5
 
       - name: Snyk test (dependency vulnerabilities)
-        run: npx -y snyk@latest test --severity-threshold=high
+        run: npx -y snyk@latest test --all-projects --severity-threshold=high
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       - name: Snyk code (SAST)
-        run: npx -y snyk@latest code test --severity-threshold=high
+        run: npx -y snyk@latest code test --all-projects --severity-threshold=high
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
