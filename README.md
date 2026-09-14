@@ -1,59 +1,124 @@
-# 03GifsApp
+# 03-gifs-app-dev-talles
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.21.
+Angular 21 standalone app: search and trending GIFs via the Giphy API. Built as part of the **Angular Udemy — DevTalles** course, with a production-grade CI/CD pipeline (GitHub Actions + Snyk + SonarCloud + Vercel).
 
-## Development server
+## Stack
 
-To start a local development server, run:
+- **Angular 21.2** (standalone components, signals, `@angular/build` builder)
+- **pnpm 11** with strict build-script approval (`pnpm-workspace.yaml` `allowBuilds`)
+- **Vitest 4** + jsdom for unit/integration tests (Angular's `@angular/build:unit-test`)
+- **Tailwind CSS 4** for styling
+- **TypeScript 5.9**
 
-```bash
-ng serve
+## Project layout
+
+```
+src/
+  app/
+    gifs/
+      components/      # gif-list, gif-list-item, side-menu, side-menu-*
+      interfaces/      # Gif, GiphyResponse
+      mapper/          # GifMapper (Giphy item → Gif model)
+      pages/           # dashboard-page, search-page, trending-page
+      services/        # GifService (HTTP, signals)
+    app.ts / app.config.ts / app.routes.ts
+  environments/        # environment.ts (dev template), environment.development.ts, environment.prod.generated.ts (gitignored, generated at build time)
+  env.d.ts             # ImportMetaEnv typings for VITE_GIPHY_API_KEY
+.env.example           # template for local .env (committed)
+.env                   # local dev secrets (gitignored)
+scripts/
+  inject-prod-env.cjs  # prebuild script: inlines VITE_GIPHY_API_KEY into the production env file
+.github/workflows/ci.yml
+sonar-project.properties
+.snyk
+.vercelignore
+pnpm-workspace.yaml
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+## Local setup
 
-## Code scaffolding
+### Prerequisites
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+- Node.js 22.x
+- pnpm 11.22+ (`npm i -g pnpm`)
 
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+### Steps
 
 ```bash
-ng generate --help
+# 1. Install dependencies
+pnpm install
+
+# 2. Create your local .env with the Giphy API key
+cp .env.example .env
+# Edit .env and set VITE_GIPHY_API_KEY=<your-key>
+
+# 3. Run dev server
+pnpm start   # http://localhost:4200
+
+# 4. Run tests
+pnpm exec ng test --watch=false
+
+# 5. Production build (requires VITE_GIPHY_API_KEY in env)
+VITE_GIPHY_API_KEY=<your-key> pnpm run build
+# or, in CI:
+pnpm run prebuild && pnpm exec ng build --configuration=production
 ```
 
-## Building
+### Where to get a Giphy API key
 
-To build the project run:
+1. https://developers.giphy.com/ → Sign in → Dashboard
+2. **Create an App** (select API SDK)
+3. Copy the API Key
+4. Paste it into your `.env` (local dev) and into your CI/CD platform's secrets (see below)
 
-```bash
-ng build
-```
+## CI/CD pipeline
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+Every push to `master` and every PR triggers `.github/workflows/ci.yml`:
 
-## Running unit tests
+### Job 1 · `quality-gates`
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+| Step | Tool | What it does |
+|---|---|---|
+| Install | pnpm | install dependencies with `allowBuilds` whitelist |
+| Build | Angular | smoke test compilation (dev config) |
+| Tests + coverage | Vitest | unit + integration tests; emits `coverage/lcov.info` |
+| Snyk test | Snyk CLI | dependency vulnerability scan; fails on `high`+ |
+| Snyk monitor | Snyk CLI | uploads dep graph to Snyk dashboard (master only) |
+| Snyk code | Snyk CLI | SAST scan; fails on `high`+ |
+| SonarCloud | sonarcloud.io | code quality + coverage report |
 
-```bash
-ng test
-```
+### Job 2 · `deploy-vercel` (depends on quality-gates)
 
-## Running end-to-end tests
+| Branch | Behavior |
+|---|---|
+| PR to `master` | `vercel deploy --target=preview`, comment URL on PR |
+| Push to `master` | `vercel deploy --target=production`, aliased to the prod domain |
 
-For end-to-end (e2e) testing, run:
+## Required GitHub Secrets
 
-```bash
-ng e2e
-```
+Configure at https://github.com/acst352/03-gifs-app-dev-talles/settings/secrets/actions:
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+| Secret | Source |
+|---|---|
+| `SNYK_TOKEN` | https://app.snyk.io/account → API Token |
+| `SONAR_TOKEN` | https://sonarcloud.io/account/security → Generate Token |
+| `VERCEL_TOKEN` | https://vercel.com/account/tokens |
+| `VERCEL_ORG_ID` | local: `vercel link` → `.vercel/project.json` → `orgId` |
+| `VERCEL_PROJECT_ID` | local: `vercel link` → `.vercel/project.json` → `projectId` |
+| `VITE_GIPHY_API_KEY` | https://developers.giphy.com → API Key (rotated; never in repo) |
 
-## Additional Resources
+## Required Vercel env vars
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Set `VITE_GIPHY_API_KEY` in Vercel project settings (Settings → Environment Variables). It's used at build time by `scripts/inject-prod-env.cjs`.
+
+## Linear integration
+
+Issues for this project live in Linear under the **gifs-app-dev-talles** project (workspace: `icy-alex`, team: `Icy-alex`). The current implementation tracks issue `ICY-41` (Mostrar resultados de búsqueda de gifs).
+
+## Security notes
+
+- **No hardcoded secrets.** All API keys live in `VITE_GIPHY_API_KEY` (env var), injected at build time via the prebuild script. The generated file (`environment.prod.generated.ts`) is gitignored.
+- **Git history was rewritten** to remove any past hardcoded keys before the first push. The repository's first commit on `master` is the clean baseline.
+- **Snyk** runs on every push + monitors the project for new CVEs.
+- **SonarCloud** enforces code-quality gates on every PR.
+- **Rotating the Giphy API key**: create a new key in the Giphy dashboard, then update the secret in GitHub and the env var in Vercel. No code changes needed.
