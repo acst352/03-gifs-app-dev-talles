@@ -41,7 +41,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --allow-build=esbuild --allow-build=@parcel/watcher --allow-build=lmdb --allow-build=msgpackr-extract
+        run: pnpm install --frozen-lockfile
 
       - name: Build (smoke test)
         run: pnpm exec ng build --configuration=development
@@ -107,7 +107,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --allow-build=esbuild --allow-build=@parcel/watcher --allow-build=lmdb --allow-build=msgpackr-extract
+        run: pnpm install --frozen-lockfile
 
       - name: Pull Vercel project configuration
         run: |
