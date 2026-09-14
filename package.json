@@ -3,8 +3,9 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
+    "prestart": "node scripts/inject-env.cjs development",
     "start": "ng serve",
-    "prebuild": "node scripts/inject-prod-env.cjs",
+    "prebuild": "node scripts/inject-env.cjs production",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"

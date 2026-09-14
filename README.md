@@ -22,12 +22,16 @@ src/
       pages/           # dashboard-page, search-page, trending-page
       services/        # GifService (HTTP, signals)
     app.ts / app.config.ts / app.routes.ts
-  environments/        # environment.ts (dev template), environment.development.ts, environment.prod.generated.ts (gitignored, generated at build time)
+  environments/        # environment.ts (used by tests, via Vitest's native .env loading);
+                       # environment.development.generated.ts / environment.prod.generated.ts
+                       # (gitignored, generated at serve/build time — see scripts/inject-env.cjs)
   env.d.ts             # ImportMetaEnv typings for VITE_GIPHY_API_KEY
 .env.example           # template for local .env (committed)
 .env                   # local dev secrets (gitignored)
 scripts/
-  inject-prod-env.cjs  # prebuild script: inlines VITE_GIPHY_API_KEY into the production env file
+  inject-env.cjs       # prestart/prebuild script: inlines VITE_GIPHY_API_KEY into the dev/prod env file.
+                       # Needed because @angular/build (unlike plain Vite) never populates
+                       # import.meta.env from .env files — neither for `ng serve` nor `ng build`.
 .github/workflows/ci.yml
 sonar-project.properties
 .snyk
@@ -52,7 +56,8 @@ pnpm install
 cp .env.example .env
 # Edit .env and set VITE_GIPHY_API_KEY=<your-key>
 
-# 3. Run dev server
+# 3. Run dev server (the prestart hook regenerates
+#    environment.development.generated.ts from .env automatically)
 pnpm start   # http://localhost:4200
 
 # 4. Run tests

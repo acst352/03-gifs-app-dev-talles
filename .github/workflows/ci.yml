@@ -46,6 +46,9 @@ jobs:
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
 
+      - name: Generate development environment file
+        run: node scripts/inject-env.cjs development
+
       - name: Build (smoke test)
         run: pnpm exec ng build --configuration=development
 
